@@ -1,0 +1,14 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    amq-protocol (1.8.0)
+    bunny (0.10.7)
+      amq-protocol (>= 1.6.0)
+    java_properties (0.0.4)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bunny
+  java_properties
