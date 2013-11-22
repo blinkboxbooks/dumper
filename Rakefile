@@ -24,14 +24,16 @@ task :dump, [:queue] => :amqp_connect do |t, args|
   count = queue.message_count
   puts "  #{count} messages to process"
 
-  loop = 0
-  queue.subscribe(:ack => true, :block => true) do |delivery_info, metadata, payload|
+  loop = 1
+  count.times do
+    delivery_info, _, payload = queue.pop(:ack => true)
     begin
-      p payload
-
       File.open("#{message_locations}/#{Time.now.to_i}#{delivery_info.delivery_tag}.xml", "w+") { |f| f.write payload }
-      read_channel.nack(delivery_info.delivery_tag, false, true)
-      exit(0) if loop == count
+
+      if loop == count
+        read_channel.nack(delivery_info.delivery_tag, false, true)
+        exit(0)
+      end
       loop += 1
     rescue StandardError => e
       $stderr.puts "Something went wrong"
