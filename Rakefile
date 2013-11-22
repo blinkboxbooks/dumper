@@ -1,16 +1,16 @@
-desc "Dump messages from queue back into queue"
+desc "Dumps messages from a queue to files, also requeueing them"
 task :dump, [:queue] => :amqp_connect do |t, args|
 
   queue_name = args[:queue]
-  message_locations = "#{File.dirname(__FILE__)}/#{queue_name}"
+  folder_name = queue_name.gsub(/[^A-Za-z0-9\._]+/,"-")
+  message_locations = "#{File.dirname(__FILE__)}/#{folder_name}"
 
-  unless Dir.exists? "#{File.dirname(__FILE__)}/#{queue_name}"
-    Dir.mkdir queue_name
+  unless Dir.exists? message_locations
+    Dir.mkdir message_locations
   end
 
   connection = @connection
   read_channel = connection.create_channel
-  read_channel.prefetch(1)
 
   p args
   queue = read_channel.queue(queue_name, {durable: true})
@@ -23,18 +23,17 @@ task :dump, [:queue] => :amqp_connect do |t, args|
 
   count = queue.message_count
   puts "  #{count} messages to process"
+  read_channel.prefetch(count)
 
-  loop = 1
-  count.times do
+  count.times do |loop|
     delivery_info, _, payload = queue.pop(:ack => true)
     begin
-      File.open("#{message_locations}/#{Time.now.to_i}#{delivery_info.delivery_tag}.xml", "w+") { |f| f.write payload }
+      File.open("#{message_locations}/#{loop}.xml", "w+") { |f| f.write payload }
 
-      if loop == count
+      if loop >= count || queue.message_count == 0
         read_channel.nack(delivery_info.delivery_tag, false, true)
         exit(0)
       end
-      loop += 1
     rescue StandardError => e
       $stderr.puts "Something went wrong"
       raise e
