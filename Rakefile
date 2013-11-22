@@ -9,10 +9,8 @@ task :dump, [:queue] => :amqp_connect do |t, args|
     Dir.mkdir message_locations
   end
 
-  connection = @connection
-  read_channel = connection.create_channel
+  read_channel = @connection.create_channel
 
-  p args
   queue = read_channel.queue(queue_name, {durable: true})
   puts "Connected to Queue: #{queue_name}"
 
