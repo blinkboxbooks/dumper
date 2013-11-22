@@ -26,10 +26,14 @@ task :dump, [:queue] => :amqp_connect do |t, args|
   count.times do |loop|
     delivery_info, _, payload = queue.pop(:ack => true)
     begin
+      p payload
       File.open("#{message_locations}/#{loop}.xml", "w+") { |f| f.write payload }
 
       if loop >= count || queue.message_count == 0
-        read_channel.nack(delivery_info.delivery_tag, false, true)
+        # This is is not supported by other AMQP implementations outside of rabbitmq
+        # but I find it to be the better of the two options we have.
+        #read_channel.nack(delivery_info.delivery_tag, false, true)
+        queue.close
         exit(0)
       end
     rescue StandardError => e
