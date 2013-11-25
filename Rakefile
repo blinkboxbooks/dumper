@@ -32,7 +32,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
         # This is is not supported by other AMQP implementations outside of rabbitmq
         # but I find it to be the better of the two options we have.
         #read_channel.nack(delivery_info.delivery_tag, false, true)
-        queue.close
+        read_channel.close
         exit(0)
       end
     rescue StandardError => e
