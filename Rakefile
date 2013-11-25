@@ -26,7 +26,6 @@ task :dump, [:queue] => :amqp_connect do |t, args|
   count.times do |loop|
     delivery_info, _, payload = queue.pop(:ack => true)
     begin
-      p payload
       File.open("#{message_locations}/#{loop}.xml", "w+") { |f| f.write payload }
 
       if loop >= count || queue.message_count == 0
@@ -37,7 +36,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
         exit(0)
       end
     rescue StandardError => e
-      $stderr.puts "Something went wrong"
+      $stderr.puts "Could not get messages from the queue. Make sure the provided information in the properties file is correct.\n#{e.message}"
       raise e
     end
   end
