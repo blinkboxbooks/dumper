@@ -11,7 +11,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
 
   read_channel = @connection.create_channel
 
-  queue = read_channel.queue(queue_name, {durable: true})
+  queue = read_channel.queue(queue_name, {durable: true, arguments: {"x-dead-letter-exchange" => "#{queue_name}.DLX"}})
   puts "Connected to Queue: #{queue_name}"
 
   if queue.message_count == 0
@@ -32,7 +32,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
         # This is is not supported by other AMQP implementations outside of rabbitmq
         # but I find it to be the better of the two options we have.
         #read_channel.nack(delivery_info.delivery_tag, false, true)
-        queue.close
+        read_channel.close
         exit(0)
       end
     rescue StandardError => e
