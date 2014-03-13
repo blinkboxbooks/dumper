@@ -15,7 +15,7 @@ task :dump, [:queue, :dlx]  do |t, args|
   read_channel = @connection.create_channel
 
   if dlx
-    queue = read_channel.queue(queue_name, {durable: true, arguments: {"x-dead-letter-exchange" => "#{queue_name}.DLX"}})
+    queue = read_channel.queue(queue_name, {durable: true, arguments: {"x-dead-letter-exchange" => "#{dlx}"}})
   else
     queue = read_channel.queue(queue_name, {durable: true})
   end
