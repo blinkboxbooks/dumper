@@ -1,7 +1,10 @@
 desc "Dumps messages from a queue to files, also requeueing them"
-task :dump, [:queue] => :amqp_connect do |t, args|
+task :dump, [:queue, :dlx]  do |t, args|
 
+  get_properties
+  connect
   queue_name = args[:queue]
+  dlx = args[:dlx]
   folder_name = queue_name.gsub(/[^A-Za-z0-9\._]+/,"-")
   message_locations = "#{File.dirname(__FILE__)}/#{folder_name}"
 
@@ -11,7 +14,11 @@ task :dump, [:queue] => :amqp_connect do |t, args|
 
   read_channel = @connection.create_channel
 
-  queue = read_channel.queue(queue_name, {durable: true, arguments: {"x-dead-letter-exchange" => "#{queue_name}.DLX"}})
+  if dlx
+    queue = read_channel.queue(queue_name, {durable: true, arguments: {"x-dead-letter-exchange" => "#{queue_name}.DLX"}})
+  else
+    queue = read_channel.queue(queue_name, {durable: true})
+  end
   puts "Connected to Queue: #{queue_name}"
 
   if queue.message_count == 0
@@ -24,7 +31,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
   read_channel.prefetch(count)
 
   count.times do |loop|
-    delivery_info, _, payload = queue.pop(:ack => true)
+    _, _, payload = queue.pop(:ack => true)
     begin
       File.open("#{message_locations}/#{loop}.xml", "w+") { |f| f.write payload }
 
@@ -43,7 +50,7 @@ task :dump, [:queue] => :amqp_connect do |t, args|
 
 end
 
-task :properties do
+def get_properties
   # Find a suitable properties file
   propfile = "dumper.properties"
   unless File.exist?(propfile)
@@ -54,7 +61,7 @@ task :properties do
   @properties = JavaProperties::Properties.new(propfile)
 end
 
-task :amqp_connect => :properties do
+def connect
   require 'bunny'
   @connection = Bunny.new(@properties[:mq])
   @connection.start
