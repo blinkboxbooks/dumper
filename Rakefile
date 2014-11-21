@@ -7,6 +7,7 @@ task :dump, [:queue, :perm_dump, :dlx]  do |t, args|
   dlx = args[:dlx]
   perm_dump = ['true', 'ack'].include? args[:perm_dump].to_s.downcase
   folder_name = queue_name.gsub(/[^A-Za-z0-9\._]+/,"-")
+  Dir.mkdir(ENV['DUMP_DIR']) if ENV['DUMP_DIR'] && !Dir.exists?(ENV['DUMP_DIR'])
   dump_dir = ENV['DUMP_DIR']|| "#{File.dirname(__FILE__)}"
   message_locations = "#{dump_dir}/#{folder_name}"
 
