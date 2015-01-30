@@ -1,12 +1,15 @@
 desc "Dumps messages from a queue to files, also requeueing them"
-task :dump, [:queue, :dlx]  do |t, args|
+task :dump, [:queue, :perm_dump, :dlx]  do |t, args|
 
   get_properties
   connect
   queue_name = args[:queue]
   dlx = args[:dlx]
+  perm_dump = ['true', 'ack'].include? args[:perm_dump].to_s.downcase
   folder_name = queue_name.gsub(/[^A-Za-z0-9\._]+/,"-")
-  message_locations = "#{File.dirname(__FILE__)}/#{folder_name}"
+  Dir.mkdir(ENV['DUMP_DIR']) if ENV['DUMP_DIR'] && !Dir.exists?(ENV['DUMP_DIR'])
+  dump_dir = ENV['DUMP_DIR']|| "#{File.dirname(__FILE__)}"
+  message_locations = "#{dump_dir}/#{folder_name}"
 
   unless Dir.exists? message_locations
     Dir.mkdir message_locations
@@ -31,10 +34,10 @@ task :dump, [:queue, :dlx]  do |t, args|
   read_channel.prefetch(count)
 
   count.times do |loop|
-    _, _, payload = queue.pop(:ack => true)
+    delivery_info, _, payload = queue.pop(:ack => true)
     begin
       File.open("#{message_locations}/#{loop}.xml", "w+") { |f| f.write payload }
-
+      read_channel.ack(delivery_info.delivery_tag, true) if perm_dump
       if loop >= count || queue.message_count == 0
         # This is is not supported by other AMQP implementations outside of rabbitmq
         # but I find it to be the better of the two options we have.
@@ -42,6 +45,7 @@ task :dump, [:queue, :dlx]  do |t, args|
         read_channel.close
         exit(0)
       end
+
     rescue StandardError => e
       $stderr.puts "Could not get messages from the queue. Make sure the provided information in the properties file is correct.\n#{e.message}"
       raise e
